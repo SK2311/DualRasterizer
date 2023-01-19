@@ -1,6 +1,8 @@
 #pragma once
 #include <fstream>
 #include "Math.h"
+#include "DataTypes.h"
+#include <vector>
 
 namespace dae
 {

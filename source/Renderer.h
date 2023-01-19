@@ -1,4 +1,9 @@
 #pragma once
+#include "Camera.h"
+#include "SoftwareRenderer.h"
+#include <map>
+#include "Texture.h"
+
 
 struct SDL_Window;
 struct SDL_Surface;
@@ -19,7 +24,17 @@ namespace dae
 		void Update(const Timer* pTimer);
 		void Render() const;
 
+		void ToggleFPS();
+		bool ShouldPrintFPS() const;
+
+		void ToggleRenderer();
+		void ToggleShadingMode();
+		void ToggleVehicleRotation();
+
 	private:
+		
+		ShadingMode m_ShadingMode{};
+
 		SDL_Window* m_pWindow{};
 
 		int m_Width{};
@@ -27,8 +42,18 @@ namespace dae
 
 		bool m_IsInitialized{ false };
 
+		bool m_PrintFPS{ false };
+
+		bool m_UseSoftware{ true };
+		bool m_ShouldRotate{ true };
+
+		Camera* m_pCamera{};
+		SoftwareRenderer* m_pSoftwareRenderer{};
+
+		std::map<std::string, Texture*> m_pTextureMap{};
+
 		//DIRECTX
-		HRESULT InitializeDirectX();
+		//HRESULT InitializeDirectX();
 		//...
 	};
 }
