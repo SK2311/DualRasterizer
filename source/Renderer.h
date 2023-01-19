@@ -1,6 +1,7 @@
 #pragma once
 #include "Camera.h"
 #include "SoftwareRenderer.h"
+#include "HardwareRenderer.h"
 #include <map>
 #include "Texture.h"
 
@@ -30,6 +31,7 @@ namespace dae
 		void ToggleRenderer();
 		void ToggleShadingMode();
 		void ToggleVehicleRotation();
+		void ToggleDepthBufferVis();
 
 	private:
 		
@@ -46,9 +48,12 @@ namespace dae
 
 		bool m_UseSoftware{ true };
 		bool m_ShouldRotate{ true };
+		bool m_ShowDepthBuffer{ false };
 
 		Camera* m_pCamera{};
+
 		SoftwareRenderer* m_pSoftwareRenderer{};
+		HardwareRenderer* m_pHardwareRenderer{};
 
 		std::map<std::string, Texture*> m_pTextureMap{};
 

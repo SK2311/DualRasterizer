@@ -6,40 +6,36 @@
 
 namespace dae
 {
-	SoftwareRenderer::SoftwareRenderer(SDL_Window* pWindow, Camera* pCamera, int width, int height, std::vector<MeshData*>& pMeshes, std::map<std::string, Texture*>& pTextureMap)
+	SoftwareRenderer::SoftwareRenderer(SDL_Window* pWindow, Camera* pCamera, int width, int height, std::vector<MeshData*>& pMeshes)
 		: m_pWindow{pWindow}
 		, m_pCamera{pCamera}
 		, m_Width{width}
 		, m_Height{height}
 		, m_pMeshes{pMeshes}
-		, m_pTextureMap{pTextureMap}
 	{
 		m_pFrontBuffer = SDL_GetWindowSurface(pWindow);
 		m_pBackBuffer = SDL_CreateRGBSurface(0, m_Width, m_Height, 32, 0, 0, 0, 0);
 		m_pBackBufferPixels = (uint32_t*)m_pBackBuffer->pixels;
 
 		m_pDepthBufferPixels = new float[m_Width * m_Height];
-
-		m_pCamera->Initialize((float)m_Width / (float)m_Height, 90.f, { 0.0f,0.0f,-10.f });
-
-
 	}
 
 	SoftwareRenderer::~SoftwareRenderer()
 	{
 		delete[] m_pDepthBufferPixels;
 
-		for (auto& pMesh : m_pMeshes)
+		for (auto pMesh : m_pMeshes)
 		{
 			delete pMesh;
 		}
 	}
 
-	void SoftwareRenderer::Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode)
+	void SoftwareRenderer::Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode, bool showDepthBuffer)
 	{
 		m_pCamera->Update(pTimer);
 
 		m_ShadingMode = shadingMode;
+		m_ShowDepthBuffer = showDepthBuffer;
 
 		if (shouldRotate)
 		{
@@ -244,7 +240,15 @@ namespace dae
 
 
 									//Render the pixel
-									finalColor = ShadePixel(pixelInfo);
+									if (!m_ShowDepthBuffer)
+									{
+										finalColor = ShadePixel(pixelInfo);
+									}
+									else
+									{
+										float depth{ (zBuffer - 0.995f) / (1.0f - 0.995f) };
+										finalColor = { depth, depth, depth };
+									}
 
 									//Update Color in Buffer
 									finalColor.MaxToOne();
@@ -318,22 +322,22 @@ namespace dae
 		ColorRGB ambient{ 0.025f,0.025f,0.025f };
 
 		//Diffuse map
-		ColorRGB diffuse{ m_pTextureMap.at("DiffuseMap")->Sample(vertexOut.uv) };
+		ColorRGB diffuse{ m_pMeshes[0]->m_pTextureMap.at("DiffuseMap")->Sample(vertexOut.uv)};
 
 		//Normal map
 		Vector3 biNormal{ Vector3::Cross(vertexOut.normal, vertexOut.tangent).Normalized() };
 		Matrix tangentAxisSpace{ Matrix{vertexOut.tangent, biNormal, vertexOut.normal, {0,0,0}} };
 
-		ColorRGB normalColour{ m_pTextureMap.at("NormalMap")->Sample(vertexOut.uv)};
+		ColorRGB normalColour{ m_pMeshes[0]->m_pTextureMap.at("NormalMap")->Sample(vertexOut.uv)};
 		Vector3 normal{ 2.0f * normalColour.r - 1.0f, 2.0f * normalColour.g - 1.0f, 2.0f * normalColour.b - 1.0f };
 		normal = tangentAxisSpace.TransformVector(normal);
 		normal.Normalize();
 
 		//Glossy map
-		ColorRGB gloss{ m_pTextureMap.at("GlossyMap")->Sample(vertexOut.uv) };
+		ColorRGB gloss{ m_pMeshes[0]->m_pTextureMap.at("GlossyMap")->Sample(vertexOut.uv) };
 
 		//Specular map
-		ColorRGB specular{ m_pTextureMap.at("SpecularMap")->Sample(vertexOut.uv) };
+		ColorRGB specular{ m_pMeshes[0]->m_pTextureMap.at("SpecularMap")->Sample(vertexOut.uv) };
 
 		//Calculate labert cosine
 		//Make sure that the normal and the lightDirection point in the same direction (originally opposed to each other)

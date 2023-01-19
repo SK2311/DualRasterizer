@@ -61,15 +61,19 @@ int main(int argc, char* args[])
 				{
 					pRenderer->ToggleRenderer();
 				}
-				if (e.key.keysym.scancode == SDL_SCANCODE_F2)
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F2)
 				{
 					pRenderer->ToggleVehicleRotation();
 				}
-				if (e.key.keysym.scancode == SDL_SCANCODE_F5)
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F5)
 				{
 					pRenderer->ToggleShadingMode();
 				}
-				if (e.key.keysym.scancode == SDL_SCANCODE_F11)
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F7)
+				{
+					pRenderer->ToggleDepthBufferVis();
+				}
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F11)
 				{
 					pRenderer->ToggleFPS();
 				}

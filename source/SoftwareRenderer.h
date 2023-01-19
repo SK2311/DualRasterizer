@@ -14,10 +14,10 @@ namespace dae
 	class SoftwareRenderer final
 	{
 	public:
-		SoftwareRenderer(SDL_Window* pWindow, Camera* pCamera, int width, int height, std::vector<MeshData*>& pMeshes, std::map<std::string, Texture*>& pTextureMap);
+		SoftwareRenderer(SDL_Window* pWindow, Camera* pCamera, int width, int height, std::vector<MeshData*>& pMeshes);
 		~SoftwareRenderer();
 
-		void Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode);
+		void Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode, bool showDepthBuffer);
 		void Render() const;
 
 	private:
@@ -35,11 +35,13 @@ namespace dae
 		float* m_pDepthBufferPixels{};
 
 		std::vector<MeshData*> m_pMeshes{};
-		std::map<std::string, Texture*> m_pTextureMap{};
+		//std::map<std::string, Texture*> m_pTextureMap{};
 
 		int m_Width{};
 		int m_Height{};
 
 		ShadingMode m_ShadingMode{};
+
+		bool m_ShowDepthBuffer{};
 	};
 }

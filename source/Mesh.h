@@ -1,8 +1,10 @@
 #pragma once
 
-//#include "Texture.h"
+#include "Texture.h"
 #include <vector>
 #include "DataTypes.h"
+#include <map>
+
 namespace dae
 {
 	class MeshData
@@ -13,14 +15,12 @@ namespace dae
 		MeshData(MeshData&&) noexcept = delete;
 		MeshData& operator=(const MeshData&) = delete;
 		MeshData& operator=(MeshData&&) noexcept = delete;
-		~MeshData() {
-			/*for (auto* texture : textures)
+		~MeshData()
+		{
+			for (auto& texture : m_pTextureMap)
 			{
-				if (texture)
-				{
-					delete texture;
-				}
-			};*/
+				delete texture.second;
+			}
 		};
 
 		std::vector<Vertex_In> vertices{};
@@ -35,15 +35,7 @@ namespace dae
 		Matrix rotationMatrix{};
 		float yawRotation{};
 
-
-		/**
-			* 0 => Diffuse
-			* 1 => Normal
-			* 2 => Specular
-			* 3 => Glossiness
-			*/
-		/*std::array<std::string, 4> texturesLocations{};
-		std::array<Texture*, 4> textures{};*/
+		std::map<std::string, Texture*> m_pTextureMap{};
 
 		void AddRotationY(float yaw)
 		{
@@ -53,6 +45,11 @@ namespace dae
 			// Update world matrix 
 			UpdateWorldMatrix();
 		};
+
+		Texture* GetTexture(std::string textureName) const
+		{
+			return m_pTextureMap.at(textureName);
+		}
 
 	private:
 		void UpdateWorldMatrix()

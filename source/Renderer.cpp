@@ -26,29 +26,18 @@ namespace dae {
 		pMesh->worldMatrix = pMesh->scaleMatrix * pMesh->rotationMatrix * pMesh->transformMatrix;
 		pMesh->primitiveTopology = PrimitiveTopology::TriangleList;
 
+		pMesh->m_pTextureMap.insert(std::make_pair("DiffuseMap", Texture::LoadFromFile("Resources/vehicle_diffuse.png")));
+		pMesh->m_pTextureMap.insert(std::make_pair("NormalMap", Texture::LoadFromFile("Resources/vehicle_normal.png")));
+		pMesh->m_pTextureMap.insert(std::make_pair("SpecularMap", Texture::LoadFromFile("Resources/vehicle_specular.png")));
+		pMesh->m_pTextureMap.insert(std::make_pair("GlossyMap", Texture::LoadFromFile("Resources/vehicle_gloss.png")));
+
 		std::vector<MeshData*> pMeshes{ pMesh };
 
-		m_pTextureMap.insert(std::make_pair("DiffuseMap", Texture::LoadFromFile("Resources/vehicle_diffuse.png")));
-		m_pTextureMap.insert(std::make_pair("NormalMap", Texture::LoadFromFile("Resources/vehicle_normal.png")));
-		m_pTextureMap.insert(std::make_pair("GlossyMap", Texture::LoadFromFile("Resources/vehicle_gloss.png")));
-		m_pTextureMap.insert(std::make_pair("SpecularMap", Texture::LoadFromFile("Resources/vehicle_specular.png")));
-
 		m_pCamera = new Camera();
-		m_pSoftwareRenderer = new SoftwareRenderer(m_pWindow, m_pCamera, m_Width, m_Height, pMeshes, m_pTextureMap);
+		m_pCamera->Initialize((float)m_Width / (float)m_Height, 90.f, { 0.0f,0.0f,-10.f });
 
-		//All for the DirectX rasterizer
-
-		////Initialize DirectX pipeline
-		//const HRESULT result = InitializeDirectX();
-		//if (result == S_OK)
-		//{
-		//	m_IsInitialized = true;
-		//	std::cout << "DirectX is initialized and ready!\n";
-		//}
-		//else
-		//{
-		//	std::cout << "DirectX initialization failed!\n";
-		//}
+		m_pSoftwareRenderer = new SoftwareRenderer(m_pWindow, m_pCamera, m_Width, m_Height, pMeshes);
+		m_pHardwareRenderer = new HardwareRenderer(m_pWindow, m_pCamera, m_Width, m_Height, pMeshes);
 
 		std::cout << "\033[33m";
 		std::cout << "[Key Bindings - SHARED]\n";
@@ -78,6 +67,7 @@ namespace dae {
 
 	Renderer::~Renderer()
 	{
+		delete m_pHardwareRenderer;
 		delete m_pSoftwareRenderer;
 		delete m_pCamera;
 
@@ -91,25 +81,23 @@ namespace dae {
 	{
 		if (m_UseSoftware)
 		{
-			m_pSoftwareRenderer->Update(pTimer, m_ShouldRotate, m_ShadingMode);
+			m_pSoftwareRenderer->Update(pTimer, m_ShouldRotate, m_ShadingMode, m_ShowDepthBuffer);
 		}
 		else
 		{
-			//Update DirectX
+			m_pHardwareRenderer->Update(pTimer, m_ShouldRotate);
 		}
 	}
 
 	void Renderer::Render() const
 	{
-		/*if (!m_IsInitialized)
-			return;*/
 		if (m_UseSoftware)
 		{
 			m_pSoftwareRenderer->Render();
 		}
 		else
 		{
-			//Render DirectX
+			m_pHardwareRenderer->Render();
 		}
 	}
 
@@ -155,6 +143,11 @@ namespace dae {
 	void Renderer::ToggleVehicleRotation()
 	{
 		m_ShouldRotate = !m_ShouldRotate;
+	}
+
+	void Renderer::ToggleDepthBufferVis()
+	{
+		m_ShowDepthBuffer = !m_ShowDepthBuffer;
 	}
 
 	/*HRESULT Renderer::InitializeDirectX()
