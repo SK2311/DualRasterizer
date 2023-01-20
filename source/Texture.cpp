@@ -38,18 +38,18 @@ namespace dae
 		//TODO
 		//Sample the correct texel for the given uv
 
-		SDL_Color rgb{};
-		Uint32 u = uv.x * m_pSurface->w;
-		Uint32 v = uv.y * m_pSurface->h;
+		Uint8 r, g, b;
 
-		//Sample the correct data for the given uv
-		Uint32 index{ u + v * static_cast<Uint32>(m_pSurface->w) };
-		Uint32 p = m_pSurfacePixels[index];
-		SDL_GetRGB(p, m_pSurface->format, &rgb.r, &rgb.g, &rgb.b);
+		const size_t x{ static_cast<size_t>(uv.x * m_pSurface->w) };
+		const size_t y{ static_cast<size_t>(uv.y * m_pSurface->h) };
 
-		//change color from range 0,255 to 0,1
-		ColorRGB rgb2{ rgb.r, rgb.g, rgb.b };
-		return rgb2 / 255.0f;
+		const Uint32 pixel{ m_pSurfacePixels[x + y * m_pSurface->w] };
+
+		SDL_GetRGB(pixel, m_pSurface->format, &r, &g, &b);
+
+		const constexpr float invClampVal{ 1 / 255.f };
+
+		return { r * invClampVal,g * invClampVal,b * invClampVal };
 	}
 
 	SDL_Surface* Texture::GetSurface() const

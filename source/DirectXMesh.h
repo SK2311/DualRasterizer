@@ -4,11 +4,13 @@ namespace dae
 {
 	class MeshData;
 	class Effect;
+	class FireEffect;
 
 	class DirectXMesh
 	{
 	public:
 		DirectXMesh(ID3D11Device* pDevice, Effect* pEffect, MeshData* pMeshData, ID3D11DeviceContext* pDeviceContext);
+		DirectXMesh(ID3D11Device* pDevice, FireEffect* pEffect, MeshData* pMeshData, ID3D11DeviceContext* pDeviceContext);
 		~DirectXMesh();
 
 		//Rest of the rule of 5
@@ -25,11 +27,13 @@ namespace dae
 		MeshData* GetMesh() const;
 
 		Effect* GetEffect() const;
+		FireEffect* GetFireEffect() const;
 
 	private:
 		MeshData* m_pMeshData{};
 
 		Effect* m_pEffect{};
+		FireEffect* m_pFireEffect{};
 
 		ID3D11Buffer* m_pVertexBuffer{};
 		ID3D11Buffer* m_pIndexBuffer{};

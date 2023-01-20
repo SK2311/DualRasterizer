@@ -65,6 +65,10 @@ int main(int argc, char* args[])
 				{
 					pRenderer->ToggleVehicleRotation();
 				}
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F3)
+				{
+					pRenderer->ToggleFire();
+				}
 				else if (e.key.keysym.scancode == SDL_SCANCODE_F5)
 				{
 					pRenderer->ToggleShadingMode();
@@ -72,6 +76,10 @@ int main(int argc, char* args[])
 				else if (e.key.keysym.scancode == SDL_SCANCODE_F7)
 				{
 					pRenderer->ToggleDepthBufferVis();
+				}
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F10)
+				{
+					pRenderer->ToggleUniformColor();
 				}
 				else if (e.key.keysym.scancode == SDL_SCANCODE_F11)
 				{

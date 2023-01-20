@@ -54,6 +54,7 @@
       <Filter>Renderers</Filter>
     </ClInclude>
     <ClInclude Include="Effect.h" />
+    <ClInclude Include="FireEffect.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -86,5 +87,6 @@
       <Filter>Renderers</Filter>
     </ClCompile>
     <ClCompile Include="Effect.cpp" />
+    <ClCompile Include="FireEffect.cpp" />
   </ItemGroup>
 </Project>

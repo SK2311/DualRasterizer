@@ -104,24 +104,33 @@ namespace dae
 			const uint8_t* pKeyboardState = SDL_GetKeyboardState(nullptr);
 
 			// Movement
-			if (pKeyboardState[SDL_SCANCODE_W])
+			if (pKeyboardState[SDL_SCANCODE_W] || pKeyboardState[SDL_SCANCODE_UP])
 			{
 				origin += forward * currentSpeedPerSecond * deltaTime;
 			}
 
-			if (pKeyboardState[SDL_SCANCODE_S])
+			if (pKeyboardState[SDL_SCANCODE_S] || pKeyboardState[SDL_SCANCODE_DOWN])
 			{
 				origin -= forward * currentSpeedPerSecond * deltaTime;
 			}
 
-			if (pKeyboardState[SDL_SCANCODE_A])
+			if (pKeyboardState[SDL_SCANCODE_A] || pKeyboardState[SDL_SCANCODE_LEFT])
 			{
 				origin -= right * currentSpeedPerSecond * deltaTime;
 			}
 
-			if (pKeyboardState[SDL_SCANCODE_D])
+			if (pKeyboardState[SDL_SCANCODE_D] || pKeyboardState[SDL_SCANCODE_RIGHT])
 			{
 				origin += right * currentSpeedPerSecond * deltaTime;
+			}
+
+			if (pKeyboardState[SDL_SCANCODE_LSHIFT])
+			{
+				SetMoveSpeedFast();
+			}
+			else
+			{
+				SetMoveSpeedNormal();
 			}
 
 			//Mouse Input

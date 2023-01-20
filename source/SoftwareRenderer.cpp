@@ -30,12 +30,13 @@ namespace dae
 		}
 	}
 
-	void SoftwareRenderer::Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode, bool showDepthBuffer)
+	void SoftwareRenderer::Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode, bool showDepthBuffer, bool uniformColor)
 	{
 		m_pCamera->Update(pTimer);
 
 		m_ShadingMode = shadingMode;
 		m_ShowDepthBuffer = showDepthBuffer;
+		m_UniformColor = uniformColor;
 
 		if (shouldRotate)
 		{
@@ -54,210 +55,217 @@ namespace dae
 		VertexTransformationFunction();
 
 		std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
-		SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
 
-		for (auto& pMesh : m_pMeshes)
+		if (!m_UniformColor)
 		{
-			//Change how the for loop advances based on the primitive topology
-			int size = 0;
-			std::vector<Vertex_Out> transformedVertices{ pMesh->vertices_out };
+			SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
+		}
+		else
+		{
+			SDL_FillRect(m_pBackBuffer, NULL, SDL_MapRGB(m_pBackBuffer->format, 25, 25, 25));
+		}
 
+		auto pMesh{ m_pMeshes[0] };
+
+		//Change how the for loop advances based on the primitive topology
+		int size = 0;
+		std::vector<Vertex_Out> transformedVertices{ pMesh->vertices_out };
+
+		if (pMesh->primitiveTopology == PrimitiveTopology::TriangleList)
+		{
+			size = (int)pMesh->indices.size();
+		}
+		else if (pMesh->primitiveTopology == PrimitiveTopology::TriangleStrip)
+		{
+			size = (int)pMesh->indices.size() - 2;
+		}
+
+		for (int i{}; i < size;)
+		{
+			int evenIndex{};
+			if (pMesh->primitiveTopology == PrimitiveTopology::TriangleStrip)
+			{
+				evenIndex = i % 2;
+			}
+
+			int index0{ (int)pMesh->indices[i] };
+			int index1{ (int)pMesh->indices[i + 1 + evenIndex] };
+			int index2{ (int)pMesh->indices[i + 2 - evenIndex] };
+
+			//Increase i based on primitiveTopology
 			if (pMesh->primitiveTopology == PrimitiveTopology::TriangleList)
 			{
-				size = (int)pMesh->indices.size();
+				i += 3;
 			}
 			else if (pMesh->primitiveTopology == PrimitiveTopology::TriangleStrip)
 			{
-				size = (int)pMesh->indices.size() - 2;
+				++i;
 			}
 
-			for (int i{}; i < size;)
+			//Calculate the points of the triangle
+			Vector4 v0{ transformedVertices[index0].position };
+			Vector4 v1{ transformedVertices[index1].position };
+			Vector4 v2{ transformedVertices[index2].position };
+
+			//Frustum Culling
+			if (v0.x < -1.0f || v0.x > 1.0f || v0.y < -1.0f || v0.y > 1.0f || v0.z < 0.0f || v0.z > 1.0f ||
+				v1.x < -1.0f || v1.x > 1.0f || v1.y < -1.0f || v1.y > 1.0f || v1.z < 0.0f || v1.z > 1.0f ||
+				v2.x < -1.0f || v2.x > 1.0f || v2.y < -1.0f || v2.y > 1.0f || v2.z < 0.0f || v2.z > 1.0f)
 			{
-				int evenIndex{};
-				if (pMesh->primitiveTopology == PrimitiveTopology::TriangleStrip)
+				continue;
+			}
+
+			//Pre-calculate value for the depth buffer -> depth buffer will not be linear anymore
+			float v0InvDepth{ 1 / v0.w };
+			float v1InvDepth{ 1 / v1.w };
+			float v2InvDepth{ 1 / v2.w };
+
+			//Convert from NDC to raster space
+			//Go from [-1,1] range to [0,1] range, taking screen size into acount
+			v0.x = ((v0.x + 1) / 2.0f) * m_Width;
+			v0.y = ((1 - v0.y) / 2.0f) * m_Height;
+
+			v1.x = ((v1.x + 1) / 2.0f) * m_Width;
+			v1.y = ((1 - v1.y) / 2.0f) * m_Height;
+
+			v2.x = ((v2.x + 1) / 2.0f) * m_Width;
+			v2.y = ((1 - v2.y) / 2.0f) * m_Height;
+
+			//Calculate the bounding box
+			float xMin = std::min(std::min(v0.x, v1.x), v2.x);
+			float xMax = std::max(std::max(v0.x, v1.x), v2.x);
+
+			float yMin = std::min(std::min(v0.y, v1.y), v2.y);
+			float yMax = std::max(std::max(v0.y, v1.y), v2.y);
+
+			for (int py{ (int)yMin }; py < yMax; ++py)
+			{
+				for (int px{ (int)xMin }; px < xMax; ++px)
 				{
-					evenIndex = i % 2;
-				}
+					ColorRGB finalColor{ 0.f, 0.f, 0.f };
 
-				int index0{ (int)pMesh->indices[i] };
-				int index1{ (int)pMesh->indices[i + 1 + evenIndex] };
-				int index2{ (int)pMesh->indices[i + 2 - evenIndex] };
+					//Current pixel
+					Vector2 pixel{ (float)px,(float)py };
 
-				//Increase i based on primitiveTopology
-				if (pMesh->primitiveTopology == PrimitiveTopology::TriangleList)
-				{
-					i += 3;
-				}
-				else if (pMesh->primitiveTopology == PrimitiveTopology::TriangleStrip)
-				{
-					++i;
-				}
+					//Check if the current pixel overlaps the triangle formed by the vertices
+				//2D cross product gives a float, based on sign we know if the point is inside the triangle
+					Vector2 edge0{ {v1.x - v0.x}, {v1.y - v0.y} };
+					Vector2 pointToEdge0{ Vector2{v0.x, v0.y }, pixel };
+					float cross0{ Vector2::Cross(edge0, pointToEdge0) };
 
-				//Calculate the points of the triangle
-				Vector4 v0{ transformedVertices[index0].position };
-				Vector4 v1{ transformedVertices[index1].position };
-				Vector4 v2{ transformedVertices[index2].position };
+					Vector2 edge1{ {v2.x - v1.x}, {v2.y - v1.y} };
+					Vector2 pointToEdge1{ Vector2{v1.x, v1.y }, pixel };
+					float cross1{ Vector2::Cross(edge1, pointToEdge1) };
 
-				//Frustum Culling
-				if (v0.x < -1.0f || v0.x > 1.0f || v0.y < -1.0f || v0.y > 1.0f || v0.z < 0.0f || v0.z > 1.0f ||
-					v1.x < -1.0f || v1.x > 1.0f || v1.y < -1.0f || v1.y > 1.0f || v1.z < 0.0f || v1.z > 1.0f ||
-					v2.x < -1.0f || v2.x > 1.0f || v2.y < -1.0f || v2.y > 1.0f || v2.z < 0.0f || v2.z > 1.0f)
-				{
-					continue;
-				}
+					Vector2 edge2{ {v0.x - v2.x}, {v0.y - v2.y} };
+					Vector2 pointToEdge2{ Vector2{v2.x, v2.y }, pixel };
+					float cross2{ Vector2::Cross(edge2, pointToEdge2) };
 
-				//Pre-calculate value for the depth buffer -> depth buffer will not be linear anymore
-				float v0InvDepth{ 1 / v0.w };
-				float v1InvDepth{ 1 / v1.w };
-				float v2InvDepth{ 1 / v2.w };
-
-				//Convert from NDC to raster space
-				//Go from [-1,1] range to [0,1] range, taking screen size into acount
-				v0.x = ((v0.x + 1) / 2.0f) * m_Width;
-				v0.y = ((1 - v0.y) / 2.0f) * m_Height;
-
-				v1.x = ((v1.x + 1) / 2.0f) * m_Width;
-				v1.y = ((1 - v1.y) / 2.0f) * m_Height;
-
-				v2.x = ((v2.x + 1) / 2.0f) * m_Width;
-				v2.y = ((1 - v2.y) / 2.0f) * m_Height;
-
-				//Calculate the bounding box
-				float xMin = std::min(std::min(v0.x, v1.x), v2.x);
-				float xMax = std::max(std::max(v0.x, v1.x), v2.x);
-
-				float yMin = std::min(std::min(v0.y, v1.y), v2.y);
-				float yMax = std::max(std::max(v0.y, v1.y), v2.y);
-
-				for (int py{ (int)yMin }; py < yMax; ++py)
-				{
-					for (int px{ (int)xMin }; px < xMax; ++px)
+					if (cross0 > 0.0f && cross1 > 0.0f && cross2 > 0.0f)
 					{
-						ColorRGB finalColor{ 0.f, 0.f, 0.f };
+						//Calculate the barycentric coordinates
+						//2D cross product of V1V0 and V2V0
+						float areaOfparallelogram{ Vector2::Cross(edge0, edge1) };
 
-						//Current pixel
-						Vector2 pixel{ (float)px,(float)py };
+						//Calculate the weights
+						float w0{ Vector2::Cross(edge1, pointToEdge1) / areaOfparallelogram };
+						float w1{ Vector2::Cross(edge2, pointToEdge2) / areaOfparallelogram };
+						float w2{ Vector2::Cross(edge0, pointToEdge0) / areaOfparallelogram };
 
-						//Check if the current pixel overlaps the triangle formed by the vertices
-					//2D cross product gives a float, based on sign we know if the point is inside the triangle
-						Vector2 edge0{ {v1.x - v0.x}, {v1.y - v0.y} };
-						Vector2 pointToEdge0{ Vector2{v0.x, v0.y }, pixel };
-						float cross0{ Vector2::Cross(edge0, pointToEdge0) };
-
-						Vector2 edge1{ {v2.x - v1.x}, {v2.y - v1.y} };
-						Vector2 pointToEdge1{ Vector2{v1.x, v1.y }, pixel };
-						float cross1{ Vector2::Cross(edge1, pointToEdge1) };
-
-						Vector2 edge2{ {v0.x - v2.x}, {v0.y - v2.y} };
-						Vector2 pointToEdge2{ Vector2{v2.x, v2.y }, pixel };
-						float cross2{ Vector2::Cross(edge2, pointToEdge2) };
-
-						if (cross0 > 0.0f && cross1 > 0.0f && cross2 > 0.0f)
+						if (w0 >= 0.0f && w1 >= 0.0f && w2 >= 0.0f)
 						{
-							//Calculate the barycentric coordinates
-							//2D cross product of V1V0 and V2V0
-							float areaOfparallelogram{ Vector2::Cross(edge0, edge1) };
+							//Do the depth buffer test
+							float zBuffer0{ (1.0f / v0.z) * w0 };
+							float zBuffer1{ (1.0f / v1.z) * w1 };
+							float zBuffer2{ (1.0f / v2.z) * w2 };
 
-							//Calculate the weights
-							float w0{ Vector2::Cross(edge1, pointToEdge1) / areaOfparallelogram };
-							float w1{ Vector2::Cross(edge2, pointToEdge2) / areaOfparallelogram };
-							float w2{ Vector2::Cross(edge0, pointToEdge0) / areaOfparallelogram };
+							float zBuffer{ zBuffer0 + zBuffer1 + zBuffer2 };
+							float invZBuffer{ 1.0f / zBuffer };
 
-							if (w0 >= 0.0f && w1 >= 0.0f && w2 >= 0.0f)
+							if (invZBuffer < 0.0f || invZBuffer > 1.0f)
 							{
-								//Do the depth buffer test
-								float zBuffer0{ (1.0f / v0.z) * w0 };
-								float zBuffer1{ (1.0f / v1.z) * w1 };
-								float zBuffer2{ (1.0f / v2.z) * w2 };
+								break;
+							}
 
-								float zBuffer{ zBuffer0 + zBuffer1 + zBuffer2 };
-								float invZBuffer{ 1.0f / zBuffer };
+							if (invZBuffer < m_pDepthBufferPixels[px + (py * m_Width)])
+							{
+								//Write value of invZbuffer to the depthBuffer
+								m_pDepthBufferPixels[px + (py * m_Width)] = invZBuffer;
 
-								if (invZBuffer < 0.0f || invZBuffer > 1.0f)
+								//Interpolated the depth value
+								float wInterpolated{ 1.0f / ((w0 / v0.w) + (w1 / v1.w) + (w2 / v2.w)) };
+
+								//Interpolated colour
+								ColorRGB interpolatedColour{ transformedVertices[index0].color * (w0 / v0.w) +
+															transformedVertices[index1].color * (w1 / v1.w) +
+															transformedVertices[index2].color * (w2 / v2.w) };
+								interpolatedColour *= wInterpolated;
+
+
+
+								//Interpolated uv
+								Vector2 interpolatedUV{ transformedVertices[index0].uv * (w0 / v0.w) +
+														transformedVertices[index1].uv * (w1 / v1.w) +
+														transformedVertices[index2].uv * (w2 / v2.w) };
+								interpolatedUV *= wInterpolated;
+
+
+
+								//Interpolated normal
+								Vector3 interpolatedNormal{ transformedVertices[index0].normal * (w0 / v0.w) +
+															transformedVertices[index1].normal * (w1 / v1.w) +
+															transformedVertices[index2].normal * (w2 / v2.w) };
+								interpolatedNormal *= wInterpolated;
+								//Normalize direction vectors!
+								interpolatedNormal.Normalize();
+
+
+
+								//Interpolated tangent
+								Vector3 interpolatedTangent{ transformedVertices[index0].tangent * (w0 / v0.w) +
+															transformedVertices[index1].tangent * (w1 / v1.w) +
+															transformedVertices[index2].tangent * (w2 / v2.w) };
+								interpolatedTangent *= wInterpolated;
+								//Normalize direction vectors!
+								interpolatedTangent.Normalize();
+
+
+
+								//Interpolated viewDirection
+								Vector3 interpolatedViewDirection{ transformedVertices[index0].viewDirection * (w0 / v0.w) +
+																	transformedVertices[index1].viewDirection * (w1 / v1.w) +
+																	transformedVertices[index2].viewDirection * (w2 / v2.w) };
+								interpolatedViewDirection *= wInterpolated;
+								//Normalize direction vectors!
+								interpolatedViewDirection.Normalize();
+
+
+								Vertex_Out pixelInfo{};
+								pixelInfo.position = Vector4{ pixel.x, pixel.y, invZBuffer, wInterpolated };
+								pixelInfo.uv = interpolatedUV;
+								pixelInfo.normal = interpolatedNormal;
+								pixelInfo.tangent = interpolatedTangent;
+								pixelInfo.viewDirection = interpolatedViewDirection;
+
+
+								//Render the pixel
+								if (!m_ShowDepthBuffer)
 								{
-									break;
+									finalColor = ShadePixel(pixelInfo);
+								}
+								else
+								{
+									float depth{ (zBuffer - 0.995f) / (1.0f - 0.995f) };
+									finalColor = { depth, depth, depth };
 								}
 
-								if (invZBuffer < m_pDepthBufferPixels[px + (py * m_Width)])
-								{
-									//Write value of invZbuffer to the depthBuffer
-									m_pDepthBufferPixels[px + (py * m_Width)] = invZBuffer;
+								//Update Color in Buffer
+								finalColor.MaxToOne();
 
-									//Interpolated the depth value
-									float wInterpolated{ 1.0f / ((w0 / v0.w) + (w1 / v1.w) + (w2 / v2.w)) };
-
-									//Interpolated colour
-									ColorRGB interpolatedColour{ transformedVertices[index0].color * (w0 / v0.w) +
-																transformedVertices[index1].color * (w1 / v1.w) +
-																transformedVertices[index2].color * (w2 / v2.w) };
-									interpolatedColour *= wInterpolated;
-
-
-
-									//Interpolated uv
-									Vector2 interpolatedUV{ transformedVertices[index0].uv * (w0 / v0.w) +
-															transformedVertices[index1].uv * (w1 / v1.w) +
-															transformedVertices[index2].uv * (w2 / v2.w) };
-									interpolatedUV *= wInterpolated;
-
-
-
-									//Interpolated normal
-									Vector3 interpolatedNormal{ transformedVertices[index0].normal * (w0 / v0.w) +
-																transformedVertices[index1].normal * (w1 / v1.w) +
-																transformedVertices[index2].normal * (w2 / v2.w) };
-									interpolatedNormal *= wInterpolated;
-									//Normalize direction vectors!
-									interpolatedNormal.Normalize();
-
-
-
-									//Interpolated tangent
-									Vector3 interpolatedTangent{ transformedVertices[index0].tangent * (w0 / v0.w) +
-																transformedVertices[index1].tangent * (w1 / v1.w) +
-																transformedVertices[index2].tangent * (w2 / v2.w) };
-									interpolatedTangent *= wInterpolated;
-									//Normalize direction vectors!
-									interpolatedTangent.Normalize();
-
-
-
-									//Interpolated viewDirection
-									Vector3 interpolatedViewDirection{ transformedVertices[index0].viewDirection * (w0 / v0.w) +
-																		transformedVertices[index1].viewDirection * (w1 / v1.w) +
-																		transformedVertices[index2].viewDirection * (w2 / v2.w) };
-									interpolatedViewDirection *= wInterpolated;
-									//Normalize direction vectors!
-									interpolatedViewDirection.Normalize();
-
-
-									Vertex_Out pixelInfo{};
-									pixelInfo.position = Vector4{ pixel.x, pixel.y, invZBuffer, wInterpolated };
-									pixelInfo.uv = interpolatedUV;
-									pixelInfo.normal = interpolatedNormal;
-									pixelInfo.tangent = interpolatedTangent;
-									pixelInfo.viewDirection = interpolatedViewDirection;
-
-
-									//Render the pixel
-									if (!m_ShowDepthBuffer)
-									{
-										finalColor = ShadePixel(pixelInfo);
-									}
-									else
-									{
-										float depth{ (zBuffer - 0.995f) / (1.0f - 0.995f) };
-										finalColor = { depth, depth, depth };
-									}
-
-									//Update Color in Buffer
-									finalColor.MaxToOne();
-
-									m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-										static_cast<uint8_t>(finalColor.r * 255),
-										static_cast<uint8_t>(finalColor.g * 255),
-										static_cast<uint8_t>(finalColor.b * 255));
-								}
+								m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+									static_cast<uint8_t>(finalColor.r * 255),
+									static_cast<uint8_t>(finalColor.g * 255),
+									static_cast<uint8_t>(finalColor.b * 255));
 							}
 						}
 					}

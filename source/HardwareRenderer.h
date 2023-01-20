@@ -16,12 +16,15 @@ namespace dae
 		HardwareRenderer(SDL_Window* pWindow, Camera* pCamera, int width, int height, std::vector<MeshData*> pMeshes);
 		~HardwareRenderer();
 
-		void Update(const Timer* pTimer, bool shouldRotate);
+		void Update(const Timer* pTimer, bool shouldRotate, bool showFire, bool uniformColor);
 		void Render() const;
 
 	private:
 
 		HRESULT InitializeDirectX();
+
+		void SetupVehicleMesh(std::vector<MeshData*>& pMeshes);
+		void SetupThrusterMesh(std::vector<MeshData*>& pMeshes);
 
 		SDL_Window* m_pWindow{};
 		Camera* m_pCamera;
@@ -41,6 +44,9 @@ namespace dae
 
 		int m_Width{};
 		int m_Height{};
+
+		bool m_ShowFire{};
+		bool m_UniformColor{};
 	};
 }
 

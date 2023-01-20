@@ -13,6 +13,47 @@ float INTENSITY = float(7.0);
 float SHININESS = float(25.0);
 float3 AMBIENT = float3(0.025, 0.025, 0.025);
 
+RasterizerState gRasterizerState
+{
+	CullMode = back;
+	FrontCounterClockwise = false;
+};
+
+BlendState gBlendState
+{
+    BlendEnable[0] = true;
+    SrcBlend = src_alpha;
+    DestBlend = inv_src_alpha;
+    BlendOp = add;
+    SrcBlendAlpha = zero;
+    DestBlendAlpha = zero;
+    BlendOpAlpha = add;
+    RenderTargetWriteMask[0] = 0x0F;
+};
+
+DepthStencilState gDepthStencilState
+{
+    DepthEnable = true;
+    DepthWriteMask = true;
+    DepthFunc = less;
+    StencilEnable = false;
+
+    StencilReadMask = 0x0F;
+    StencilWriteMask = 0x0F;
+
+    FrontFaceStencilFunc = always;
+    BackFaceStencilFunc = always;
+
+    FrontFaceStencilDepthFail = keep;
+    BackFaceStencilDepthFail = keep;
+
+    FrontFaceStencilPass = keep;
+    BackFaceStencilPass = keep;
+
+    FrontFaceStencilFail = keep;
+    BackFaceStencilFail = keep;
+};
+
 struct VS_INPUT
 {
 	float3 Position: POSITION;
@@ -75,7 +116,6 @@ float4 PS(VS_OUTPUT input): SV_TARGET
 	float3 tangentSpaceNormal = normalize(mul(mappedNormal, tangentSpaceAxis));
 
 	float observedArea = dot(tangentSpaceNormal, -gLightDir);
-	//observedArea = saturate(observedArea);
 
 	float3 viewDirection = normalize(input.WorldPosition.xyz - gViewInverse[3].xyz);
 
@@ -85,9 +125,7 @@ float4 PS(VS_OUTPUT input): SV_TARGET
 
 	float phongValue = CalculatePhong(specularMapSample, glossinessMapSample.x * SHININESS, gLightDir, viewDirection, tangentSpaceNormal);
 	float3 diffuse = CalculateLambert(1.f, diffuseMapSample);
-
-	// ((diffuse * int) + phong + ambient) * obser
-	//float3 finalColor = INTENSITY * (AMBIENT + diffuse + phongValue) * observedArea;
+	
 	float3 finalColor = ((diffuse * INTENSITY) + phongValue + AMBIENT) * observedArea;
 
 	return float4(finalColor, 1);
@@ -98,6 +136,9 @@ technique11 DefaultTechnique
 {
 	pass P0
 	{
+		SetRasterizerState(gRasterizerState);
+		SetDepthStencilState(gDepthStencilState, 0);
+        SetBlendState(gBlendState, float4(0.f, 0.f, 0.f, 0.f), 0xFFFFFFFF);
 		SetVertexShader(CompileShader(vs_5_0, VS()));
 		SetGeometryShader(NULL);
 		SetPixelShader(CompileShader(ps_5_0, PS()));

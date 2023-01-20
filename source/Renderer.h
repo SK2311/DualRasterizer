@@ -32,8 +32,12 @@ namespace dae
 		void ToggleShadingMode();
 		void ToggleVehicleRotation();
 		void ToggleDepthBufferVis();
+		void ToggleFire();
+		void ToggleUniformColor();
 
 	private:
+		void LoadVehicleOBJ();
+		void LoadThrusterOBJ();
 		
 		ShadingMode m_ShadingMode{};
 
@@ -49,11 +53,15 @@ namespace dae
 		bool m_UseSoftware{ true };
 		bool m_ShouldRotate{ true };
 		bool m_ShowDepthBuffer{ false };
+		bool m_ShowFire{ true };
+		bool m_UniformColor{ false };
 
 		Camera* m_pCamera{};
 
 		SoftwareRenderer* m_pSoftwareRenderer{};
 		HardwareRenderer* m_pHardwareRenderer{};
+
+		std::vector<MeshData*> m_pMeshes{};
 
 		std::map<std::string, Texture*> m_pTextureMap{};
 

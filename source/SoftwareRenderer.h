@@ -17,7 +17,7 @@ namespace dae
 		SoftwareRenderer(SDL_Window* pWindow, Camera* pCamera, int width, int height, std::vector<MeshData*>& pMeshes);
 		~SoftwareRenderer();
 
-		void Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode, bool showDepthBuffer);
+		void Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode, bool showDepthBuffer, bool uniformColor);
 		void Render() const;
 
 	private:
@@ -43,5 +43,7 @@ namespace dae
 		ShadingMode m_ShadingMode{};
 
 		bool m_ShowDepthBuffer{};
+		bool m_NormalMapEnabled{ true };
+		bool m_UniformColor{};
 	};
 }

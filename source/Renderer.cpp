@@ -12,32 +12,14 @@ namespace dae {
 	{
 		SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
 
-		std::vector<Vertex_In> vertices{};
-		std::vector<uint32_t> indices{};
-		Utils::ParseOBJ("Resources/vehicle.obj", vertices, indices);
-
-		MeshData* pMesh{ new MeshData() };
-		pMesh->vertices = vertices;
-		pMesh->indices = indices;
-		pMesh->transformMatrix = Matrix::CreateTranslation({ 0,0,50 });
-		pMesh->scaleMatrix = Matrix::CreateScale({ 1,1,1 });
-		pMesh->yawRotation = 90.f * TO_RADIANS;
-		pMesh->rotationMatrix = Matrix::CreateRotationY(pMesh->yawRotation);
-		pMesh->worldMatrix = pMesh->scaleMatrix * pMesh->rotationMatrix * pMesh->transformMatrix;
-		pMesh->primitiveTopology = PrimitiveTopology::TriangleList;
-
-		pMesh->m_pTextureMap.insert(std::make_pair("DiffuseMap", Texture::LoadFromFile("Resources/vehicle_diffuse.png")));
-		pMesh->m_pTextureMap.insert(std::make_pair("NormalMap", Texture::LoadFromFile("Resources/vehicle_normal.png")));
-		pMesh->m_pTextureMap.insert(std::make_pair("SpecularMap", Texture::LoadFromFile("Resources/vehicle_specular.png")));
-		pMesh->m_pTextureMap.insert(std::make_pair("GlossyMap", Texture::LoadFromFile("Resources/vehicle_gloss.png")));
-
-		std::vector<MeshData*> pMeshes{ pMesh };
+		LoadVehicleOBJ();
+		LoadThrusterOBJ();
 
 		m_pCamera = new Camera();
 		m_pCamera->Initialize((float)m_Width / (float)m_Height, 90.f, { 0.0f,0.0f,-10.f });
 
-		m_pSoftwareRenderer = new SoftwareRenderer(m_pWindow, m_pCamera, m_Width, m_Height, pMeshes);
-		m_pHardwareRenderer = new HardwareRenderer(m_pWindow, m_pCamera, m_Width, m_Height, pMeshes);
+		m_pSoftwareRenderer = new SoftwareRenderer(m_pWindow, m_pCamera, m_Width, m_Height, m_pMeshes);
+		m_pHardwareRenderer = new HardwareRenderer(m_pWindow, m_pCamera, m_Width, m_Height, m_pMeshes);
 
 		std::cout << "\033[33m";
 		std::cout << "[Key Bindings - SHARED]\n";
@@ -81,11 +63,11 @@ namespace dae {
 	{
 		if (m_UseSoftware)
 		{
-			m_pSoftwareRenderer->Update(pTimer, m_ShouldRotate, m_ShadingMode, m_ShowDepthBuffer);
+			m_pSoftwareRenderer->Update(pTimer, m_ShouldRotate, m_ShadingMode, m_ShowDepthBuffer, m_UniformColor);
 		}
 		else
 		{
-			m_pHardwareRenderer->Update(pTimer, m_ShouldRotate);
+			m_pHardwareRenderer->Update(pTimer, m_ShouldRotate, m_ShowFire, m_UniformColor);
 		}
 	}
 
@@ -150,8 +132,58 @@ namespace dae {
 		m_ShowDepthBuffer = !m_ShowDepthBuffer;
 	}
 
-	/*HRESULT Renderer::InitializeDirectX()
+	void Renderer::ToggleFire()
 	{
-		return S_FALSE;
-	}*/
+		m_ShowFire = !m_ShowFire;
+	}
+
+	void Renderer::ToggleUniformColor()
+	{
+		m_UniformColor = !m_UniformColor;
+	}
+
+	void Renderer::LoadVehicleOBJ()
+	{
+		std::vector<Vertex_In> vertices{};
+		std::vector<uint32_t> indices{};
+		Utils::ParseOBJ("Resources/vehicle.obj", vertices, indices);
+
+		MeshData* pMesh{ new MeshData() };
+		pMesh->vertices = vertices;
+		pMesh->indices = indices;
+		pMesh->transformMatrix = Matrix::CreateTranslation({ 0,0,50 });
+		pMesh->scaleMatrix = Matrix::CreateScale({ 1,1,1 });
+		pMesh->yawRotation = 90.f * TO_RADIANS;
+		pMesh->rotationMatrix = Matrix::CreateRotationY(pMesh->yawRotation);
+		pMesh->worldMatrix = pMesh->scaleMatrix * pMesh->rotationMatrix * pMesh->transformMatrix;
+		pMesh->primitiveTopology = PrimitiveTopology::TriangleList;
+
+		pMesh->m_pTextureMap.insert(std::make_pair("DiffuseMap", Texture::LoadFromFile("Resources/vehicle_diffuse.png")));
+		pMesh->m_pTextureMap.insert(std::make_pair("NormalMap", Texture::LoadFromFile("Resources/vehicle_normal.png")));
+		pMesh->m_pTextureMap.insert(std::make_pair("SpecularMap", Texture::LoadFromFile("Resources/vehicle_specular.png")));
+		pMesh->m_pTextureMap.insert(std::make_pair("GlossyMap", Texture::LoadFromFile("Resources/vehicle_gloss.png")));
+
+		m_pMeshes.push_back(pMesh);
+	}
+
+	void Renderer::LoadThrusterOBJ()
+	{
+		std::vector<Vertex_In> vertices{};
+		std::vector<uint32_t> indices{};
+		Utils::ParseOBJ("Resources/fireFX.obj", vertices, indices);
+
+		MeshData* pMesh{ new MeshData() };
+		pMesh->vertices = vertices;
+		pMesh->indices = indices;
+		pMesh->transformMatrix = Matrix::CreateTranslation({ 0,0,50 });
+		pMesh->scaleMatrix = Matrix::CreateScale({ 1,1,1 });
+		pMesh->yawRotation = 90.f * TO_RADIANS;
+		pMesh->rotationMatrix = Matrix::CreateRotationY(pMesh->yawRotation);
+		pMesh->worldMatrix = pMesh->scaleMatrix * pMesh->rotationMatrix * pMesh->transformMatrix;
+		pMesh->primitiveTopology = PrimitiveTopology::TriangleList;
+
+		pMesh->m_pTextureMap.insert(std::make_pair("fireFX", Texture::LoadFromFile("Resources/fireFX_diffuse.png")));
+
+		m_pMeshes.push_back(pMesh);
+	}
 }

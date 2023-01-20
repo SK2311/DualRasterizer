@@ -3,6 +3,7 @@
 #include "Mesh.h"
 #include "Effect.h"
 #include "DirectXMesh.h"
+#include "FireEffect.h"
 
 namespace dae 
 {
@@ -17,72 +18,11 @@ namespace dae
 		Effect* vehicleEffect{ new Effect(m_pDevice, std::wstring{L"Resources/PosCol3D.fx"}) };
 		m_pMeshes.push_back(new DirectXMesh(m_pDevice, vehicleEffect, pMeshes[0], m_pDeviceContext));
 
-		for (auto pMesh : pMeshes)
-		{
-			for (auto texture : pMesh->m_pTextureMap)
-			{
-				if (texture.second == nullptr)
-				{
-					std::cout << texture.first << " was a nullptr\n";
-					continue;
-				}
+		FireEffect* thrusterEffect{ new FireEffect(m_pDevice, std::wstring{L"Resources/Fire.fx"}) };
+		m_pMeshes.push_back(new DirectXMesh(m_pDevice, thrusterEffect, pMeshes[1], m_pDeviceContext));
 
-				auto pSurface = texture.second->GetSurface();
-
-				DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
-				D3D11_TEXTURE2D_DESC desc{};
-				desc.Width = pSurface->w;
-				desc.Height = pSurface->h;
-				desc.MipLevels = 1;
-				desc.ArraySize = 1;
-				desc.Format = format;
-				desc.SampleDesc.Count = 1;
-				desc.SampleDesc.Quality = 0;
-				desc.Usage = D3D11_USAGE_DEFAULT;
-				desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-				desc.CPUAccessFlags = 0;
-				desc.MiscFlags = 0;
-
-				D3D11_SUBRESOURCE_DATA initData;
-				initData.pSysMem = pSurface->pixels;
-				initData.SysMemPitch = static_cast<UINT>(pSurface->pitch);
-				initData.SysMemSlicePitch = static_cast<UINT>(pSurface->h * pSurface->pitch);
-
-				auto pResource{ texture.second->GetResource() };
-				HRESULT hr = m_pDevice->CreateTexture2D(&desc, &initData, &pResource);
-
-				if (FAILED(hr))
-				{
-					throw std::runtime_error("Failed to create texture for direct3d");
-				}
-
-				texture.second->SetResource(pResource);
-
-				D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc{};
-				SRVDesc.Format = format;
-				SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-				SRVDesc.Texture2D.MipLevels = 1;
-
-				auto pResourceView{ texture.second->GetSRV() };
-
-				hr = m_pDevice->CreateShaderResourceView(pResource, &SRVDesc, &pResourceView);
-
-				if (FAILED(hr))
-				{
-					throw std::runtime_error("Failed to create resource view for texture");
-				}
-
-				texture.second->SetResourceView(pResourceView);
-			}
-		}
-
-		for (auto pMesh : m_pMeshes)
-		{
-			pMesh->GetEffect()->SetDiffuseMap(pMesh->GetMesh()->GetTexture("DiffuseMap"));
-			pMesh->GetEffect()->SetNormalMap(pMesh->GetMesh()->GetTexture("NormalMap"));
-			pMesh->GetEffect()->SetSpecularMap(pMesh->GetMesh()->GetTexture("SpecularMap"));
-			pMesh->GetEffect()->SetGlossyMap(pMesh->GetMesh()->GetTexture("GlossyMap"));
-		}
+		SetupVehicleMesh(pMeshes);
+		SetupThrusterMesh(pMeshes);
 
 		auto lightDir = Vector3{ 0.577f, -0.577f, 0.577f };
 		for (auto pMesh : m_pMeshes)
@@ -116,15 +56,19 @@ namespace dae
 		}
 	}
 
-	void HardwareRenderer::Update(const Timer* pTimer, bool shouldRotate)
+	void HardwareRenderer::Update(const Timer* pTimer, bool shouldRotate, bool showFire, bool uniformColor)
 	{
 		m_pCamera->Update(pTimer);
+		m_ShowFire = showFire;
+		m_UniformColor = uniformColor;
 
 		if (shouldRotate)
 		{
+			const float degPerSec{ 25.0f };
+
 			for (auto pMesh : m_pMeshes) 
 			{
-				const float degPerSec{ 25.0f };
+				
 				pMesh->GetMesh()->AddRotationY((degPerSec * pTimer->GetElapsed()) * TO_RADIANS);
 			}
 		}
@@ -133,7 +77,13 @@ namespace dae
 	void HardwareRenderer::Render() const
 	{
 		//1 Clear RTV & DSV
-		ColorRGB clearColour = ColorRGB{ 0.0f,0.0f,0.3f };
+		ColorRGB clearColour = ColorRGB{ 0.39f,0.59f,0.93f };
+
+		if (m_UniformColor)
+		{
+			clearColour = ColorRGB{ 0.1f, 0.1f, 0.1f };
+		}
+
 		m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, &clearColour.r);
 		m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
@@ -151,7 +101,19 @@ namespace dae
 
 			pMesh->SetWorldMatrix(worldMatrix);
 			pMesh->SetViewInverse(inverseView);
-			pMesh->Render(worldViewProjection);
+
+			if (!m_ShowFire)
+			{
+				if (pMesh->GetEffect())
+				{
+
+					pMesh->Render(worldViewProjection);
+				}
+			}
+			else
+			{
+				pMesh->Render(worldViewProjection);
+			}
 		}
 
 		//3 Present backbuffer (swap)
@@ -270,5 +232,130 @@ namespace dae
 		m_pDeviceContext->RSSetViewports(1, &viewport);
 
 		return result;
+	}
+
+	void HardwareRenderer::SetupVehicleMesh(std::vector<MeshData*>& pMeshes)
+	{
+		for (auto texture : pMeshes[0]->m_pTextureMap)
+		{
+			if (texture.second == nullptr)
+			{
+				std::cout << texture.first << " was a nullptr\n";
+				continue;
+			}
+
+			auto pSurface = texture.second->GetSurface();
+
+			DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			D3D11_TEXTURE2D_DESC desc{};
+			desc.Width = pSurface->w;
+			desc.Height = pSurface->h;
+			desc.MipLevels = 1;
+			desc.ArraySize = 1;
+			desc.Format = format;
+			desc.SampleDesc.Count = 1;
+			desc.SampleDesc.Quality = 0;
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			desc.CPUAccessFlags = 0;
+			desc.MiscFlags = 0;
+
+			D3D11_SUBRESOURCE_DATA initData;
+			initData.pSysMem = pSurface->pixels;
+			initData.SysMemPitch = static_cast<UINT>(pSurface->pitch);
+			initData.SysMemSlicePitch = static_cast<UINT>(pSurface->h * pSurface->pitch);
+
+			auto pResource{ texture.second->GetResource() };
+			HRESULT hr = m_pDevice->CreateTexture2D(&desc, &initData, &pResource);
+
+			if (FAILED(hr))
+			{
+				throw std::runtime_error("Failed to create texture for direct3d");
+			}
+
+			texture.second->SetResource(pResource);
+
+			D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc{};
+			SRVDesc.Format = format;
+			SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			SRVDesc.Texture2D.MipLevels = 1;
+
+			auto pResourceView{ texture.second->GetSRV() };
+
+			hr = m_pDevice->CreateShaderResourceView(pResource, &SRVDesc, &pResourceView);
+
+			if (FAILED(hr))
+			{
+				throw std::runtime_error("Failed to create resource view for texture");
+			}
+
+			texture.second->SetResourceView(pResourceView);
+		}
+
+		m_pMeshes[0]->GetEffect()->SetDiffuseMap(m_pMeshes[0]->GetMesh()->GetTexture("DiffuseMap"));
+		m_pMeshes[0]->GetEffect()->SetNormalMap(m_pMeshes[0]->GetMesh()->GetTexture("NormalMap"));
+		m_pMeshes[0]->GetEffect()->SetSpecularMap(m_pMeshes[0]->GetMesh()->GetTexture("SpecularMap"));
+		m_pMeshes[0]->GetEffect()->SetGlossyMap(m_pMeshes[0]->GetMesh()->GetTexture("GlossyMap"));
+	}
+
+	void HardwareRenderer::SetupThrusterMesh(std::vector<MeshData*>& pMeshes)
+	{
+		for (auto texture : pMeshes[1]->m_pTextureMap)
+		{
+			if (texture.second == nullptr)
+			{
+				std::cout << texture.first << " was a nullptr\n";
+				continue;
+			}
+
+			auto pSurface = texture.second->GetSurface();
+
+			DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			D3D11_TEXTURE2D_DESC desc{};
+			desc.Width = pSurface->w;
+			desc.Height = pSurface->h;
+			desc.MipLevels = 1;
+			desc.ArraySize = 1;
+			desc.Format = format;
+			desc.SampleDesc.Count = 1;
+			desc.SampleDesc.Quality = 0;
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			desc.CPUAccessFlags = 0;
+			desc.MiscFlags = 0;
+
+			D3D11_SUBRESOURCE_DATA initData;
+			initData.pSysMem = pSurface->pixels;
+			initData.SysMemPitch = static_cast<UINT>(pSurface->pitch);
+			initData.SysMemSlicePitch = static_cast<UINT>(pSurface->h * pSurface->pitch);
+
+			auto pResource{ texture.second->GetResource() };
+			HRESULT hr = m_pDevice->CreateTexture2D(&desc, &initData, &pResource);
+
+			if (FAILED(hr))
+			{
+				throw std::runtime_error("Failed to create texture for direct3d");
+			}
+
+			texture.second->SetResource(pResource);
+
+			D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc{};
+			SRVDesc.Format = format;
+			SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			SRVDesc.Texture2D.MipLevels = 1;
+
+			auto pResourceView{ texture.second->GetSRV() };
+
+			hr = m_pDevice->CreateShaderResourceView(pResource, &SRVDesc, &pResourceView);
+
+			if (FAILED(hr))
+			{
+				throw std::runtime_error("Failed to create resource view for texture");
+			}
+
+			texture.second->SetResourceView(pResourceView);
+		}
+
+		m_pMeshes[1]->GetFireEffect()->SetDiffuseMap(m_pMeshes[1]->GetMesh()->GetTexture("fireFX"));
 	}
 }
