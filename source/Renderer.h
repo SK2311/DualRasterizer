@@ -34,12 +34,17 @@ namespace dae
 		void ToggleDepthBufferVis();
 		void ToggleFire();
 		void ToggleUniformColor();
+		void ToggleBounding();
+		void ToggleNormal();
+		void ToggleSampleMode();
+		void ToggleCulling();
 
 	private:
 		void LoadVehicleOBJ();
 		void LoadThrusterOBJ();
 		
 		ShadingMode m_ShadingMode{};
+		CullMode m_CullMode{};
 
 		SDL_Window* m_pWindow{};
 
@@ -50,11 +55,13 @@ namespace dae
 
 		bool m_PrintFPS{ false };
 
-		bool m_UseSoftware{ true };
+		bool m_UseSoftware{ false };
 		bool m_ShouldRotate{ true };
 		bool m_ShowDepthBuffer{ false };
 		bool m_ShowFire{ true };
 		bool m_UniformColor{ false };
+		bool m_ShowBounding{ false };
+		bool m_RenderNormal{ true };
 
 		Camera* m_pCamera{};
 

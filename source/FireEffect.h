@@ -1,4 +1,5 @@
 #pragma once
+#include "DataTypes.h"
 
 namespace dae
 {
@@ -18,11 +19,12 @@ namespace dae
 		ID3DX11EffectMatrixVariable* GetWorldViewProjectionMatrix() const;
 
 		void SetDiffuseMap(Texture* pTexture);
-		void SetLightDirection(Vector3& lightDirection);
 		void SetWorldMatrix(Matrix& worldMatrix);
 		void SetInverseViewMatrix(Matrix& inverseView);
 
 	private:
+		void SetVariables();
+
 		ID3DX11Effect* m_pEffect{};
 		ID3DX11EffectTechnique* m_pTechnique{};
 
@@ -32,9 +34,9 @@ namespace dae
 
 		ID3DX11EffectShaderResourceVariable* m_pDiffuseMapVariable{};
 
-		ID3DX11EffectVectorVariable* m_pLightDirVariable{};
-
 		ID3DX11EffectMatrixVariable* m_pWorldVariable{};
 		ID3DX11EffectMatrixVariable* m_pViewInverseVariable{};
+
+		ID3DX11EffectRasterizerVariable* m_pRasterizerState{};
 	};
 }

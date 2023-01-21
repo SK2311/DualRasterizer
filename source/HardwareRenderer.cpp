@@ -12,6 +12,7 @@ namespace dae
 		, m_pCamera{pCamera}
 		, m_Width{width}
 		, m_Height{height}
+		, m_SampleMode{SampleMode::Point}
 	{
 		const HRESULT result{ InitializeDirectX() };
 
@@ -56,7 +57,7 @@ namespace dae
 		}
 	}
 
-	void HardwareRenderer::Update(const Timer* pTimer, bool shouldRotate, bool showFire, bool uniformColor)
+	void HardwareRenderer::Update(const Timer* pTimer, bool shouldRotate, bool showFire, bool uniformColor, CullMode cullMode)
 	{
 		m_pCamera->Update(pTimer);
 		m_ShowFire = showFire;
@@ -72,6 +73,9 @@ namespace dae
 				pMesh->GetMesh()->AddRotationY((degPerSec * pTimer->GetElapsed()) * TO_RADIANS);
 			}
 		}
+
+		m_pMeshes[0]->GetEffect()->UpdateSampling(m_SampleMode);
+		m_pMeshes[0]->GetEffect()->UpdateCulling(cullMode);
 	}
 
 	void HardwareRenderer::Render() const
@@ -118,6 +122,31 @@ namespace dae
 
 		//3 Present backbuffer (swap)
 		m_pSwapChain->Present(0, 0);
+	}
+
+	void HardwareRenderer::ToggleSampleState()
+	{
+		std::cout << "\033[32m";;
+
+		switch (m_SampleMode)
+		{
+		case dae::SampleMode::Point:
+			m_SampleMode = SampleMode::Linear;
+			std::cout << "**(HARDWARE) Sampler Filter = LINEAR";
+			break;
+		case dae::SampleMode::Linear:
+			m_SampleMode = SampleMode::Anisotropic;
+			std::cout << "**(HARDWARE) Sampler Filter = ANISOTROPIC";
+			break;
+		case dae::SampleMode::Anisotropic:
+			m_SampleMode = SampleMode::Point;
+			std::cout << "**(HARDWARE) Sampler Filter = POINT";
+			break;
+		default:
+			break;
+		}
+
+		std::cout << '\n';
 	}
 
 	HRESULT HardwareRenderer::InitializeDirectX()

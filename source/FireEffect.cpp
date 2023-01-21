@@ -8,23 +8,7 @@ namespace dae
 	{
 		m_pEffect = FireEffect::LoadEffect(pDevice, assetFilePath);
 
-		m_pTechnique = m_pEffect->GetTechniqueByName("DefaultTechnique");
-		if (!m_pTechnique->IsValid())
-		{
-			std::wcout << L"Technique not valid\n";
-		}
-
-		m_pMatWorldViewProjVariable = m_pEffect->GetVariableByName("gWorldViewProj")->AsMatrix();
-		if (!m_pMatWorldViewProjVariable->IsValid())
-		{
-			std::wcout << L"m_pMatWorldViewProjVariable not valid\n";
-		}
-
-		m_pDiffuseMapVariable = m_pEffect->GetVariableByName("gDiffuseMap")->AsShaderResource();
-		if (!m_pDiffuseMapVariable->IsValid())
-		{
-			std::wcout << L"m_pDiffuseMapVariable not valid\n";
-		}
+		SetVariables();
 
 		// Vertex layout
 		const uint32_t numElements{ 4 };
@@ -69,24 +53,6 @@ namespace dae
 		if (FAILED(result))
 		{
 			return;
-		}
-
-		m_pLightDirVariable = m_pEffect->GetVariableByName("gLightDir")->AsVector();
-		if (!m_pLightDirVariable->IsValid())
-		{
-			std::wcout << L"m_pLightDirVariable is not valid\n";
-		}
-
-		m_pViewInverseVariable = m_pEffect->GetVariableByName("gViewInverse")->AsMatrix();
-		if (!m_pViewInverseVariable->IsValid())
-		{
-			std::wcout << L"m_pViewInverseVariable is not valid\n";
-		}
-
-		m_pWorldVariable = m_pEffect->GetVariableByName("gWorld")->AsMatrix();
-		if (!m_pWorldVariable->IsValid())
-		{
-			std::wcout << L"m_pWorldVariable is not valid\n";
 		}
 	}
 
@@ -176,14 +142,6 @@ namespace dae
 		}
 	}
 
-	void FireEffect::SetLightDirection(Vector3& lightDirection)
-	{
-		if (m_pLightDirVariable)
-		{
-			m_pLightDirVariable->SetFloatVector((float*)&lightDirection);
-		}
-	}
-
 	void FireEffect::SetWorldMatrix(Matrix& worldMatrix)
 	{
 		if (m_pWorldVariable)
@@ -197,6 +155,45 @@ namespace dae
 		if (m_pViewInverseVariable)
 		{
 			m_pViewInverseVariable->SetMatrix((float*)&inverseView);
+		}
+	}
+
+	void FireEffect::SetVariables()
+	{
+		m_pTechnique = m_pEffect->GetTechniqueByName("DefaultTechnique");
+		if (!m_pTechnique->IsValid())
+		{
+			std::wcout << L"Technique not valid\n";
+		}
+
+		m_pMatWorldViewProjVariable = m_pEffect->GetVariableByName("gWorldViewProj")->AsMatrix();
+		if (!m_pMatWorldViewProjVariable->IsValid())
+		{
+			std::wcout << L"m_pMatWorldViewProjVariable not valid\n";
+		}
+
+		m_pDiffuseMapVariable = m_pEffect->GetVariableByName("gDiffuseMap")->AsShaderResource();
+		if (!m_pDiffuseMapVariable->IsValid())
+		{
+			std::wcout << L"m_pDiffuseMapVariable not valid\n";
+		}
+
+		m_pViewInverseVariable = m_pEffect->GetVariableByName("gViewInverse")->AsMatrix();
+		if (!m_pViewInverseVariable->IsValid())
+		{
+			std::wcout << L"m_pViewInverseVariable is not valid\n";
+		}
+
+		m_pWorldVariable = m_pEffect->GetVariableByName("gWorld")->AsMatrix();
+		if (!m_pWorldVariable->IsValid())
+		{
+			std::wcout << L"m_pWorldVariable is not valid\n";
+		}
+
+		m_pRasterizerState = m_pEffect->GetVariableByName("gRasterizerState")->AsRasterizer();
+		if (!m_pRasterizerState->IsValid())
+		{
+			std::wcout << L"m_pRasterizerState is not valid\n";
 		}
 	}
 }

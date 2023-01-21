@@ -1,5 +1,6 @@
 #pragma once
 #include "Camera.h"
+#include "DataTypes.h"
 
 struct SDL_Window;
 struct SDL_Surface;
@@ -16,8 +17,10 @@ namespace dae
 		HardwareRenderer(SDL_Window* pWindow, Camera* pCamera, int width, int height, std::vector<MeshData*> pMeshes);
 		~HardwareRenderer();
 
-		void Update(const Timer* pTimer, bool shouldRotate, bool showFire, bool uniformColor);
+		void Update(const Timer* pTimer, bool shouldRotate, bool showFire, bool uniformColor, CullMode cullMode);
 		void Render() const;
+
+		void ToggleSampleState();
 
 	private:
 
@@ -41,6 +44,8 @@ namespace dae
 		ID3D11RenderTargetView* m_pRenderTargetView{};
 
 		std::vector<DirectXMesh*> m_pMeshes{};
+
+		SampleMode m_SampleMode{};
 
 		int m_Width{};
 		int m_Height{};

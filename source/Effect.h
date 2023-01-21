@@ -1,4 +1,5 @@
 #pragma once
+#include "DataTypes.h"
 
 namespace dae
 {
@@ -26,7 +27,14 @@ namespace dae
 		void SetWorldMatrix(Matrix& worldMatrix);
 		void SetInverseViewMatrix(Matrix& inverseView);
 
+		void UpdateSampling(SampleMode sampleMode);
+		void UpdateCulling(CullMode cullMode);
+
 	private:
+		void SetVariables();
+		void CreateSampleStates(ID3D11Device* pDevice);
+		void CreateCullModes(ID3D11Device* pDevice);
+
 		ID3DX11Effect* m_pEffect{};
 		ID3DX11EffectTechnique* m_pTechnique{};
 
@@ -43,5 +51,16 @@ namespace dae
 
 		ID3DX11EffectMatrixVariable* m_pWorldVariable{};
 		ID3DX11EffectMatrixVariable* m_pViewInverseVariable{};
+
+		ID3DX11EffectSamplerVariable* m_pSamplerState{};
+		ID3DX11EffectRasterizerVariable* m_pRasterizerState{};
+
+		ID3D11SamplerState* m_pPointSampler{};
+		ID3D11SamplerState* m_pLinearSampler{};
+		ID3D11SamplerState* m_pAnisothropicSampler{};
+
+		ID3D11RasterizerState* m_pBackFaceCulling{};
+		ID3D11RasterizerState* m_pFrontFaceCulling{};
+		ID3D11RasterizerState* m_pDoubleFaceCulling{};
 	};
 }

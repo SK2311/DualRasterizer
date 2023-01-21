@@ -17,7 +17,7 @@ namespace dae
 		SoftwareRenderer(SDL_Window* pWindow, Camera* pCamera, int width, int height, std::vector<MeshData*>& pMeshes);
 		~SoftwareRenderer();
 
-		void Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode, bool showDepthBuffer, bool uniformColor);
+		void Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode, bool showDepthBuffer, bool uniformColor, bool showBounding, bool renderNormal, CullMode cullMode);
 		void Render() const;
 
 	private:
@@ -35,15 +35,16 @@ namespace dae
 		float* m_pDepthBufferPixels{};
 
 		std::vector<MeshData*> m_pMeshes{};
-		//std::map<std::string, Texture*> m_pTextureMap{};
 
 		int m_Width{};
 		int m_Height{};
 
 		ShadingMode m_ShadingMode{};
+		CullMode m_CullMode{};
 
 		bool m_ShowDepthBuffer{};
 		bool m_NormalMapEnabled{ true };
 		bool m_UniformColor{};
+		bool m_ShowBounding{};
 	};
 }

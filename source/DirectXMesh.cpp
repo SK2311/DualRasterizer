@@ -167,10 +167,6 @@ namespace dae
 		{
 			m_pEffect->SetLightDirection(lightDir);
 		}
-		else
-		{
-			m_pFireEffect->SetLightDirection(lightDir);
-		}
 	}
 
 	void DirectXMesh::SetWorldMatrix(Matrix& world)

@@ -28,7 +28,7 @@ int main(int argc, char* args[])
 	const uint32_t height = 480;
 
 	SDL_Window* pWindow = SDL_CreateWindow(
-		"DirectX - ***Kluskens Stef/2DAE07***",
+		"Dual Rasterizer - **Kluskens Stef (2DAE07)",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
 		width, height, 0);
@@ -69,13 +69,29 @@ int main(int argc, char* args[])
 				{
 					pRenderer->ToggleFire();
 				}
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F4)
+				{
+					pRenderer->ToggleSampleMode();
+				}
 				else if (e.key.keysym.scancode == SDL_SCANCODE_F5)
 				{
 					pRenderer->ToggleShadingMode();
 				}
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F6)
+				{
+					pRenderer->ToggleNormal();
+				}
 				else if (e.key.keysym.scancode == SDL_SCANCODE_F7)
 				{
 					pRenderer->ToggleDepthBufferVis();
+				}
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F8)
+				{
+					pRenderer->ToggleBounding();
+				}
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F9)
+				{
+					pRenderer->ToggleCulling();
 				}
 				else if (e.key.keysym.scancode == SDL_SCANCODE_F10)
 				{
@@ -104,6 +120,7 @@ int main(int argc, char* args[])
 			if (printTimer >= 1.f)
 			{
 				printTimer = 0.f;
+				std::cout << "\033[37m";
 				std::cout << "dFPS: " << pTimer->GetdFPS() << std::endl;
 			}
 		}

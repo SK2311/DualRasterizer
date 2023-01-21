@@ -3,6 +3,7 @@
 #include "SDL_surface.h"
 #include "Mesh.h"
 #include "Texture.h"
+#include "Utils.h"
 
 namespace dae
 {
@@ -30,13 +31,16 @@ namespace dae
 		}
 	}
 
-	void SoftwareRenderer::Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode, bool showDepthBuffer, bool uniformColor)
+	void SoftwareRenderer::Update(const Timer* pTimer, bool shouldRotate, ShadingMode shadingMode, bool showDepthBuffer, bool uniformColor, bool showBounding, bool renderNormal, CullMode cullMode)
 	{
 		m_pCamera->Update(pTimer);
 
 		m_ShadingMode = shadingMode;
 		m_ShowDepthBuffer = showDepthBuffer;
 		m_UniformColor = uniformColor;
+		m_ShowBounding = showBounding;
+		m_NormalMapEnabled = renderNormal;
+		m_CullMode = cullMode;
 
 		if (shouldRotate)
 		{
@@ -144,6 +148,20 @@ namespace dae
 				{
 					ColorRGB finalColor{ 0.f, 0.f, 0.f };
 
+					if (m_ShowBounding)
+					{
+						finalColor = { 1.0f,1.0f,1.0f };
+
+						finalColor.MaxToOne();
+
+						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+							static_cast<uint8_t>(finalColor.r * 255),
+							static_cast<uint8_t>(finalColor.g * 255),
+							static_cast<uint8_t>(finalColor.b * 255));
+
+						continue;
+					}
+
 					//Current pixel
 					Vector2 pixel{ (float)px,(float)py };
 
@@ -161,7 +179,24 @@ namespace dae
 					Vector2 pointToEdge2{ Vector2{v2.x, v2.y }, pixel };
 					float cross2{ Vector2::Cross(edge2, pointToEdge2) };
 
-					if (cross0 > 0.0f && cross1 > 0.0f && cross2 > 0.0f)
+					bool isPointInTriangle{};
+
+					switch (m_CullMode)
+					{
+					case dae::CullMode::BackFace:
+						isPointInTriangle = cross0 > 0.0f && cross1 > 0.0f && cross2 > 0.0f;
+						break;
+					case dae::CullMode::FrontFace:
+						isPointInTriangle = cross0 < 0.0f && cross1 < 0.0f && cross2 < 0.0f;
+						break;
+					case dae::CullMode::DoubleFace:
+						isPointInTriangle = cross0 >= 0.0f && cross1 >= 0.0f && cross2 >= 0.0f;
+						break;
+					default:
+						break;
+					}
+
+					if (isPointInTriangle)
 					{
 						//Calculate the barycentric coordinates
 						//2D cross product of V1V0 and V2V0
@@ -255,7 +290,7 @@ namespace dae
 								}
 								else
 								{
-									float depth{ (zBuffer - 0.995f) / (1.0f - 0.995f) };
+									float depth{ (invZBuffer - 0.985f) / (1.0f - 0.985f) };
 									finalColor = { depth, depth, depth };
 								}
 
@@ -349,7 +384,17 @@ namespace dae
 
 		//Calculate labert cosine
 		//Make sure that the normal and the lightDirection point in the same direction (originally opposed to each other)
-		float lambertCosine{ Vector3::Dot(normal,-lightDirection) };
+		float lambertCosine{};
+
+		if (m_NormalMapEnabled)
+		{
+			lambertCosine = Vector3::Dot(normal, -lightDirection);
+		}
+		else
+		{
+			lambertCosine = Vector3::Dot(vertexOut.normal, -lightDirection);
+		}
+
 		if (lambertCosine <= 0.0f)
 		{
 			finalColour = { 0.f,0.f,0.f };

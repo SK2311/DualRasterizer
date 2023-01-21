@@ -16,7 +16,7 @@ namespace dae {
 		LoadThrusterOBJ();
 
 		m_pCamera = new Camera();
-		m_pCamera->Initialize((float)m_Width / (float)m_Height, 90.f, { 0.0f,0.0f,-10.f });
+		m_pCamera->Initialize((float)m_Width / (float)m_Height, 45.f, { 0.0f,0.0f,0.0f });
 
 		m_pSoftwareRenderer = new SoftwareRenderer(m_pWindow, m_pCamera, m_Width, m_Height, m_pMeshes);
 		m_pHardwareRenderer = new HardwareRenderer(m_pWindow, m_pCamera, m_Width, m_Height, m_pMeshes);
@@ -63,11 +63,11 @@ namespace dae {
 	{
 		if (m_UseSoftware)
 		{
-			m_pSoftwareRenderer->Update(pTimer, m_ShouldRotate, m_ShadingMode, m_ShowDepthBuffer, m_UniformColor);
+			m_pSoftwareRenderer->Update(pTimer, m_ShouldRotate, m_ShadingMode, m_ShowDepthBuffer, m_UniformColor, m_ShowBounding, m_RenderNormal, m_CullMode);
 		}
 		else
 		{
-			m_pHardwareRenderer->Update(pTimer, m_ShouldRotate, m_ShowFire, m_UniformColor);
+			m_pHardwareRenderer->Update(pTimer, m_ShouldRotate, m_ShowFire, m_UniformColor, m_CullMode);
 		}
 	}
 
@@ -86,6 +86,9 @@ namespace dae {
 	void Renderer::ToggleFPS()
 	{
 		m_PrintFPS = !m_PrintFPS;
+		std::cout << "\033[33m";
+		m_PrintFPS ? std::cout << "**(SHARED) Print FPS ON" : std::cout << "**(SHARED) Print FPS OFF";
+		std::cout << '\n';
 	}
 
 	bool Renderer::ShouldPrintFPS() const
@@ -96,50 +99,134 @@ namespace dae {
 	void Renderer::ToggleRenderer()
 	{
 		m_UseSoftware = !m_UseSoftware;
+		std::cout << "\033[33m";
+		m_UseSoftware ? std::cout << "**(SHARED) Rasterizer Mode = SOFTWARE" : std::cout << "**(SHARED) Rasterizer Mode = HARDWARE";
+		std::cout << '\n';
 	}
 
 	void Renderer::ToggleShadingMode()
 	{
-		if (!m_UseSoftware)
-			return;
-
-		switch (m_ShadingMode)
+		if (m_UseSoftware)
 		{
-		case ShadingMode::Combined:
-			m_ShadingMode = ShadingMode::ObservedArea;
-			break;
-		case ShadingMode::ObservedArea:
-			m_ShadingMode = ShadingMode::Diffuse;
-			break;
-		case ShadingMode::Diffuse:
-			m_ShadingMode = ShadingMode::Specular;
-			break;
-		case ShadingMode::Specular:
-			m_ShadingMode = ShadingMode::Combined;
-			break;
-		default:
-			break;
+			std::cout << "\033[35m";
+
+			switch (m_ShadingMode)
+			{
+			case ShadingMode::Combined:
+				m_ShadingMode = ShadingMode::ObservedArea;
+				std::cout << "**(SOFTWARE) Shading Mode = OBSERVED_AREA";
+				break;
+			case ShadingMode::ObservedArea:
+				m_ShadingMode = ShadingMode::Diffuse;
+				std::cout << "**(SOFTWARE) Shading Mode = DIFFUSE";
+				break;
+			case ShadingMode::Diffuse:
+				m_ShadingMode = ShadingMode::Specular;
+				std::cout << "**(SOFTWARE) Shading Mode = SPECULAR";
+				break;
+			case ShadingMode::Specular:
+				m_ShadingMode = ShadingMode::Combined;
+				std::cout << "**(SOFTWARE) Shading Mode = COMBINED";
+				break;
+			default:
+				break;
+			}
+
+			std::cout << '\n';
 		}
 	}
 
 	void Renderer::ToggleVehicleRotation()
 	{
 		m_ShouldRotate = !m_ShouldRotate;
+		std::cout << "\033[33m";
+		m_ShouldRotate ? std::cout << "**(SHARED) Vehicle Rotation ON" : std::cout << "**(SHARED) Vehicle Rotation OFF";
+		std::cout << '\n';
 	}
 
 	void Renderer::ToggleDepthBufferVis()
 	{
-		m_ShowDepthBuffer = !m_ShowDepthBuffer;
+		if (m_UseSoftware)
+		{
+			m_ShowDepthBuffer = !m_ShowDepthBuffer;
+			std::cout << "\033[35m";
+			m_ShowDepthBuffer ? std::cout << "**(SOFTWARE) DepthBuffer Visualization ON" : std::cout << "**(SOFTWARE) DepthBuffer Visualization OFF";
+			std::cout << '\n';
+		}
 	}
 
 	void Renderer::ToggleFire()
 	{
-		m_ShowFire = !m_ShowFire;
+		if (!m_UseSoftware)
+		{
+			m_ShowFire = !m_ShowFire;
+			std::cout << "\033[32m";
+			m_ShowFire ? std::cout << "**(HARDWARE) FireFX ON" : std::cout << "**(HARDWARE) FireFX OFF";
+			std::cout << '\n';
+		}
 	}
 
 	void Renderer::ToggleUniformColor()
 	{
 		m_UniformColor = !m_UniformColor;
+		std::cout << "\033[33m";
+		m_UniformColor ? std::cout << "**(SHARED) Uniform ClearColor ON" : std::cout << "**(SHARED) Uniform ClearColor OFF";
+		std::cout << '\n';
+	}
+
+	void Renderer::ToggleBounding()
+	{
+		if (m_UseSoftware)
+		{
+			m_ShowBounding = !m_ShowBounding;
+			std::cout << "\033[35m";
+			m_ShowBounding ? std::cout << "**(SOFTWARE) BoundingBox Visualization ON" : std::cout << "**(SOFTWARE) BoundingBox Visualization OFF";
+			std::cout << '\n';
+		}
+	}
+
+	void Renderer::ToggleNormal()
+	{
+		if (m_UseSoftware)
+		{
+			m_RenderNormal = !m_RenderNormal;
+			std::cout << "\033[35m";
+			m_RenderNormal ? std::cout << "**(SOFTWARE) NormalMap ON" : std::cout << "**(SOFTWARE) NormalMap OFF";
+			std::cout << '\n';
+		}
+	}
+
+	void Renderer::ToggleSampleMode()
+	{
+		if (!m_UseSoftware)
+		{
+			m_pHardwareRenderer->ToggleSampleState();
+		}
+	}
+
+	void Renderer::ToggleCulling()
+	{
+		std::cout << "\033[33m";
+
+		switch (m_CullMode)
+		{
+		case dae::CullMode::BackFace:
+			m_CullMode = CullMode::FrontFace;
+			std::cout << "**(SHARED) CullMode = FRONT";
+			break;
+		case dae::CullMode::FrontFace:
+			m_CullMode = CullMode::DoubleFace;
+			std::cout << "**(SHARED) CullMode = NONE";
+			break;
+		case dae::CullMode::DoubleFace:
+			m_CullMode = CullMode::BackFace;
+			std::cout << "**(SHARED) CullMode = BACK";
+			break;
+		default:
+			break;
+		}
+
+		std::cout << '\n';
 	}
 
 	void Renderer::LoadVehicleOBJ()

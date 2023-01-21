@@ -38,4 +38,18 @@ namespace dae
 		Diffuse,
 		Specular
 	};
+
+	enum class SampleMode
+	{
+		Point,
+		Linear,
+		Anisotropic
+	};
+
+	enum class CullMode
+	{
+		BackFace,
+		FrontFace,
+		DoubleFace
+	};
 }

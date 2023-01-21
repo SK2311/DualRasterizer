@@ -7,17 +7,14 @@ float3 gLightDir: LightDirection;
 float4x4 gViewInverse: VIEWINVERSE;
 float4x4 gWorld: WORLD;
 
+SamplerState gSamplerState: ExternalSamplerState;
+RasterizerState gRasterizerState: ExternalRasterizerState;
+
 // Constants
 float PI = float(3.14159);
 float INTENSITY = float(7.0);
 float SHININESS = float(25.0);
 float3 AMBIENT = float3(0.025, 0.025, 0.025);
-
-RasterizerState gRasterizerState
-{
-	CullMode = back;
-	FrontCounterClockwise = false;
-};
 
 BlendState gBlendState
 {
@@ -71,13 +68,6 @@ struct VS_OUTPUT
 	float3 Tangent: TANGENT;
 };
 
-SamplerState samPoint
-{
-	Filter = MIN_MAG_MIP_POINT;
-	AddressU = Wrap;// or Mirror, Clamp, Border
-	AddressV = Wrap;
-};
-
 /// Vertex shader
 VS_OUTPUT VS(VS_INPUT input)
 {
@@ -111,21 +101,24 @@ float4 PS(VS_OUTPUT input): SV_TARGET
 {
 	float3 binormal = normalize(cross(input.Normal, input.Tangent));
 	float3x3 tangentSpaceAxis = float3x3(normalize(input.Tangent), binormal, normalize(input.Normal));
-	float3 normalMapSample = gNormalMap.Sample(samPoint, input.Uv).xyz;
+	float3 normalMapSample = gNormalMap.Sample(gSamplerState, input.Uv).xyz;
 	float3 mappedNormal = 2.f * normalMapSample - 1.f;
 	float3 tangentSpaceNormal = normalize(mul(mappedNormal, tangentSpaceAxis));
 
 	float observedArea = dot(tangentSpaceNormal, -gLightDir);
+	//observedArea = saturate(observedArea);
 
 	float3 viewDirection = normalize(input.WorldPosition.xyz - gViewInverse[3].xyz);
 
-	float3 specularMapSample = gSpecularMap.Sample(samPoint, input.Uv).xyz;
-	float3 glossinessMapSample = gGlossinessMap.Sample(samPoint, input.Uv).xyz;
-	float3 diffuseMapSample = gDiffuseMap.Sample(samPoint, input.Uv).xyz;
+	float3 specularMapSample = gSpecularMap.Sample(gSamplerState, input.Uv).xyz;
+	float3 glossinessMapSample = gGlossinessMap.Sample(gSamplerState, input.Uv).xyz;
+	float3 diffuseMapSample = gDiffuseMap.Sample(gSamplerState, input.Uv).xyz;
 
 	float phongValue = CalculatePhong(specularMapSample, glossinessMapSample.x * SHININESS, gLightDir, viewDirection, tangentSpaceNormal);
 	float3 diffuse = CalculateLambert(1.f, diffuseMapSample);
-	
+
+	// ((diffuse * int) + phong + ambient) * obser
+	//float3 finalColor = INTENSITY * (AMBIENT + diffuse + phongValue) * observedArea;
 	float3 finalColor = ((diffuse * INTENSITY) + phongValue + AMBIENT) * observedArea;
 
 	return float4(finalColor, 1);
