@@ -13,7 +13,7 @@ Some things we used to create the rasterizer:
 * Depth interpolation
 * Texture sampling
 * DirectX shaders (for the hardware)
-* Transparancy (for the hardware)
+* Transparency (for the hardware)
 * OBJ parser
 * BRDF
 
